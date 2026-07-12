@@ -106,8 +106,12 @@ namespace LoginRegistration
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             // Add DbContext (replace provider as needed)
-            builder.Services.AddDbContext<ApplicationDbContext>(options =>options.UseSqlServer(
-             builder.Configuration.GetConnectionString("DefaultConnection")));
+            //builder.Services.AddDbContext<ApplicationDbContext>(options =>options.UseSqlServer(
+            // builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
+
 
             //builder.Services.AddSingleton<IUserService, UserService>();
             builder.Services.AddHttpClient();
