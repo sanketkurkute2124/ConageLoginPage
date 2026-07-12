@@ -13,9 +13,13 @@ namespace LoginRegistration
     public class Program
     {
         public static void Main(string[] args)
-        {
-            var builder = WebApplication.CreateBuilder(args);
 
+        {
+            DotNetEnv.Env.Load();
+
+           
+            var builder = WebApplication.CreateBuilder(args);
+            builder.Configuration.AddEnvironmentVariables();
             // Add services to the container.
 
             builder.Services.AddControllers();

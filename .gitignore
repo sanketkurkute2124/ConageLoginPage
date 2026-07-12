@@ -12,3 +12,6 @@ obj/
 
 # VS Code
 .vscode/
+
+#env
+.env
