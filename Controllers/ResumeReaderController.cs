@@ -29,7 +29,7 @@ namespace LoginRegistration.Controllers
 
 
         [HttpPost("UploadPdf")]
-        public async Task<ApiResponse<string>> UploadPdf(IFormFile file)
+        public async Task<ApiResponse<Dictionary<string, List<string>>>> UploadPdfAsync(IFormFile file)
         {
             var result = await resumeReaderService.UploadPdfAsync(file);
             return result;

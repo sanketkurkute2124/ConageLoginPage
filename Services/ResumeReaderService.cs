@@ -4,8 +4,11 @@ using LoginRegistration.DTOs.Auth;
 using LoginRegistration.DTOs.ResumeDTOs;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Superpower.Model;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 
 namespace LoginRegistration.Services
@@ -98,17 +101,14 @@ namespace LoginRegistration.Services
                 .Distinct()
                 .ToList();
         }
-
-
-
-     
-        public async Task<ApiResponse<string>> UploadPdfAsync(IFormFile file)
+        public async Task<ApiResponse<Dictionary<string, List<string>>>> UploadPdfAsync(IFormFile file)
         {
             if (file == null || file.Length == 0)
             {
-                return null;
+                return new ApiResponse<Dictionary<string, List<string>>>(
+                    StatusCodes.Status400BadRequest,
+                    "Please upload a PDF.");
             }
-                //return BadRequest("Please upload a PDF.");
 
             var apiKey = _configuration["Parseur:ApiKey"];
             var mailboxId = _configuration["Parseur:MailboxId"];
@@ -118,21 +118,92 @@ namespace LoginRegistration.Services
                 new AuthenticationHeaderValue("Token", apiKey);
 
             using var form = new MultipartFormDataContent();
-
             using var stream = file.OpenReadStream();
-
             form.Add(new StreamContent(stream), "file", file.FileName);
 
-            var response = await _httpClient.PostAsync(
+            var uploadResponse = await _httpClient.PostAsync(
                 $"https://api.parseur.com/parser/{mailboxId}/upload",
                 form);
 
-            var result = await response.Content.ReadAsStringAsync();
+            var uploadResult = await uploadResponse.Content.ReadAsStringAsync();
 
-            return new ApiResponse<string>(
-    StatusCodes.Status200OK,
-    result
-);
+            if (!uploadResponse.IsSuccessStatusCode)
+            {
+                return new ApiResponse<Dictionary<string, List<string>>>(
+                    (int)uploadResponse.StatusCode,
+                    $"Upload failed: {uploadResult}");
+            }
+
+            string? documentId;
+            try
+            {
+                using var uploadJson = JsonDocument.Parse(uploadResult);
+                var attachments = uploadJson.RootElement.GetProperty("attachments");
+                if (attachments.GetArrayLength() == 0)
+                {
+                    return new ApiResponse<Dictionary<string, List<string>>>(
+                        StatusCodes.Status422UnprocessableEntity,
+                        $"No attachments returned by Parseur. Raw response: {uploadResult}");
+                }
+                documentId = attachments[0].GetProperty("DocumentID").GetString();
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<Dictionary<string, List<string>>>(
+                    StatusCodes.Status500InternalServerError,
+                    $"Failed to parse upload response: {ex.Message}. Raw response: {uploadResult}");
+            }
+
+            var docResponse = await _httpClient.GetAsync(
+                $"https://api.parseur.com/document/{documentId}");
+
+            var documentResult = await docResponse.Content.ReadAsStringAsync();
+
+            if (!docResponse.IsSuccessStatusCode)
+            {
+                return new ApiResponse<Dictionary<string, List<string>>>(
+                    (int)docResponse.StatusCode,
+                    $"Failed to fetch document: {documentResult}");
+            }
+
+            string content;
+            try
+            {
+                using var doc = JsonDocument.Parse(documentResult);
+                content = doc.RootElement.GetProperty("content").GetString() ?? "";
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<Dictionary<string, List<string>>>(
+                    StatusCodes.Status500InternalServerError,
+                    $"Failed to parse document response: {ex.Message}. Raw response: {documentResult}");
+            }
+
+            var lines = content
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            var sections = new Dictionary<string, List<string>>();
+            string currentSection = "General";
+            sections[currentSection] = new List<string>();
+
+            foreach (var line in lines)
+            {
+                if (Regex.IsMatch(line, @"^[A-Z][A-Z\s/&-]{2,40}$"))
+                {
+                    currentSection = line.Trim();
+                    if (!sections.ContainsKey(currentSection))
+                        sections[currentSection] = new List<string>();
+                    continue;
+                }
+                sections[currentSection].Add(line);
+            }
+
+            return new ApiResponse<Dictionary<string, List<string>>>(
+                StatusCodes.Status200OK,
+                sections);
         }
     }
 
