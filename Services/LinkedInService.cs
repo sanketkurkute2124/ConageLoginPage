@@ -83,8 +83,8 @@ namespace LoginRegistration.Services
                     };
 
 
-                    _context.Customers.Add(customer);
-                    await _context.SaveChangesAsync();
+                    //_context.Customers.Add(customer);
+                    //await _context.SaveChangesAsync();
                 }
 
                 // 5. Generate JWT

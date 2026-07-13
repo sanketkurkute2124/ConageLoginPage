@@ -118,6 +118,7 @@ namespace LoginRegistration
             builder.Services.AddScoped<CustomerService>();
             builder.Services.AddScoped<GoogleService>();
             builder.Services.AddScoped<LinkedInService>();
+            builder.Services.AddScoped<ResumeReaderService>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

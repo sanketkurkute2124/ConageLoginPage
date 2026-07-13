@@ -38,7 +38,8 @@ namespace LoginRegistration.Services
                     LastName = customerDto.LastName,
                     Email = customerDto.Email,
                     PhoneNumber = customerDto.PhoneNumber,
-                    DateOfBirth = customerDto.DateOfBirth,
+                    //DateOfBirth = customerDto.DateOfBirth,
+                    DateOfBirth = DateTime.SpecifyKind(customerDto.DateOfBirth,DateTimeKind.Utc),
                     IsActive = true,
                     Password = BCrypt.Net.BCrypt.HashPassword(customerDto.Password),
                     Role = customerDto.Role
