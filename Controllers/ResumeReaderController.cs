@@ -22,9 +22,17 @@ namespace LoginRegistration.Controllers
             var response = await resumeReaderService.ReadResume(file);
             if (response.StatusCode! == 200)
             {
-               // return StatusCode(((int)response.StatusCode, response);
+                // return StatusCode(((int)response.StatusCode, response);
             }
             return response;
+        }
+
+
+        [HttpPost("UploadPdf")]
+        public async Task<ApiResponse<string>> UploadPdf(IFormFile file)
+        {
+            var result = await resumeReaderService.UploadPdfAsync(file);
+            return result;
         }
     }
 }
